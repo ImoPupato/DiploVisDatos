@@ -53,7 +53,8 @@ El estadio del melanoma surge de una combinación de las diferentes valoraciones
 ### R (CRAN: The Comprehensive R Archive Network)
 <p style="text-align: justify;"> R es un lenguaje y un entorno diseñado para la implementación de técnicas y análisis estadísticos. Se trata de un lenguaje abierto y se encuentra disponible de manera gratuita, con una licencia GPL (general public license). Todas las variables, funciones, datos, salidas, operaciones (lógicas, comparativas, etc.), etc. son guardadas como objetos, por lo que R es un lenguaje orientado a objetos. Fue creado en 1993 por Ross Ihaka y Robert Gentleman en el Departamento de Estadística de la Universidad de Auckland, Nueva Zelanda. A partir de 1997 se conformó el equipo llamado “R Core Team” quienes tienen acceso a las modificaciones del código fuente. </p> 
 
-**En este trabajo se propone acceder a la información clínica disponible en el proyecto TCGA-SKCM, utilizando el entorno R, para explorar y describir el set de datos.** 
+**En este trabajo se propone acceder a la información clínica disponible en el proyecto TCGA-SKCM, utilizando el entorno R, para explorar y describir el set de datos.**
+
 ### Materiales y métodos
 #### Librerías utilizadas
 - RTCGA.clinical
@@ -78,22 +79,19 @@ clinica<-as.data.frame(SKCM.clinical)
 dim(clinica)
 head(colnames(clinica))
 ```
-- Eliminación de datos no interesantes para este estudio
-```{r clinica selección}
+- Selección, recodificación y reasignaciónde datos interesantes para este estudio
+```{r datos}
 datos<-clinica %>% 
-  select(-(starts_with("patient.drugs"))) %>%
-  select(-c(starts_with("patient.samples.sample"))) %>%
-  select(-c(starts_with("patient.new_tumor"))) %>%
-  select(-c(starts_with("patient.biospecimen")))%>%
-  select(-c(starts_with("patient.radiation")))%>%
-  select(-c(starts_with("patient.follow_ups")))%>%
-  select(-c(starts_with("patient.bcr")))%>%
-  select(-c(starts_with("patient.sites_of_")))%>%
-  select(-c(starts_with("patient.stage_event.gleason_grading")))
-```
-- Reasignación de la categoría estadío tumoral
-```{r estadio}
-datos <- mutate(datos, patient.stage_event.pathologic_stage = recode(patient.stage_event.pathologic_stage, 
+  select(c(patient.age_at_initial_pathologic_diagnosis,
+           patient.clinical_cqcf.country,
+           patient.gender,
+           patient.tumor_tissue_site,
+           patient.clinical_cqcf.tumor_type,
+           patient.melanoma_clark_level_value,
+           patient.breslow_depth_value,
+           patient.melanoma_ulceration_indicator,
+           patient.stage_event.pathologic_stage))%>% 
+  mutate(patient.stage_event.pathologic_stage = recode(patient.stage_event.pathologic_stage, 
                                                                        "i or ii nos"= "II",
                                                                        "stage 0"= "0",
                                                                        "stage i"= "I",
@@ -107,7 +105,35 @@ datos <- mutate(datos, patient.stage_event.pathologic_stage = recode(patient.sta
                                                                        "stage iiia"= "III",
                                                                        "stage iiib"= "III",
                                                                        "stage iiic"= "III",
-                                                                       "stage iv"= "IV"))
+                                                                       "stage iv"= "IV")) %>%
+  mutate(patient.gender = recode(patient.gender,
+                                 female= "Mujer",
+                                 male= "Varón")) %>%
+  mutate(patient.clinical_cqcf.tumor_type = recode(patient.clinical_cqcf.tumor_type,
+                                          primary= "Primario",
+                                          metastatic= "Metastasico")) %>%
+  mutate(patient.tumor_tissue_site = recode(patient.tumor_tissue_site,
+                                            "distant metastasis" = "Metástasis distante",
+                                            "primary tumor"= "Tumor primario",
+                                            "regional cutaneous or subcutaneous tissue (includes satellite and in-transit metastasis)"="Tejido regional",
+                                            "regional lymph node"="Nodo linfático")) %>%
+  mutate(patient.melanoma_ulceration_indicator = recode(patient.melanoma_ulceration_indicator,
+                                                        yes = "Con",
+                                                        no = "Sin"))%>%
+  rename(Ulceracion=patient.melanoma_ulceration_indicator)%>%
+  rename(Sitio_extraccion=patient.tumor_tissue_site)%>%
+  rename(Pais=patient.clinical_cqcf.country)%>%
+  rename(Tipo_tumoral=patient.clinical_cqcf.tumor_type)%>%
+  rename(Sexo_manifestado=patient.gender)%>%
+  rename(Estadio_tumoral=patient.stage_event.pathologic_stage)%>%
+  rename(Edad=patient.age_at_initial_pathologic_diagnosis)%>%
+  rename(Nivel_Clark=patient.melanoma_clark_level_value)%>%
+  rename(Profundidad_Breslow=patient.breslow_depth_value)
+datos[,c(1,7)]<-sapply(datos[,c(1,7)],as.numeric)
+```
+- Verificación de los datos seleccionados
+```{r resumen}
+summary(datos)
 ```
 - Guardado de datos
 ```{r datos}
@@ -118,39 +144,39 @@ La tabla con los datos seleccionados se encuentra disponible en el siguiente [li
 #### Características de las personas incluidas en la base de datos
 - Edad al momento del diagnóstico
 ```{r summary edad}
-summary(na.omit(as.numeric(as.factor(datos$patient.age_at_initial_pathologic_diagnosis))))
+summary(datos$Edad)
 ```
 - País de origen
 ```{r país}
-table(na.omit(datos$patient.clinical_cqcf.country))
+table(na.omit(datos$Pais))
 ```
 - Sexo manifestado
-```{r país}
-table(datos$patient.gender)
+```{r sexo}
+table(datos$Sexo)
 
 ```
 #### características de los tumores
 - Sitio de extracción tumoral
 ```{r sitio}
-table(datos$patient.tumor_tissue_site)
+table(datos$Sitio_tumoral)
 ```
 - Tipo tumoral
 ```{r tipo tumoral}
-table(na.omit(datos$patient.clinical_cqcf.tumor_type))
+table(na.omit(datos$Tipo_tumoral))
 ```
 - Nivel Clark
 ```{r clark}
-table(na.omit(datos$patient.melanoma_clark_level_value))
+table(na.omit(datos$Nivel_Clark))
 ```
-- Grosor de Breslow
-```{r breslow} summary(na.omit(as.numeric(as.factor(datos$patient.breslow_depth_value))))
+- Profundidad de Breslow
+```{r breslow} summary(na.omit(datos$Profundidad_Breslow))
 ```
 - Ulceración
 ```{r ulceración} 
-table(datos$patient.melanoma_ulceration_indicator)
+table(datos$Ulceracion)
 ```
-- Estadío patológico
+- Estadío tumoral patológico
 ```{r estadio pat}
-table(opcion1$patient.stage_event.pathologic_stage)
+table(datos$Estadio_tumoral)
 ```
 
